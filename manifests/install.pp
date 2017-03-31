@@ -28,11 +28,12 @@
 # Copyright 2017 Karol Kozakowski <cosaquee@gmail.com>
 #
 class windows_ad::install (
-    $ensure,
-    $installmanagementtools,
-    $installsubfeatures,
-    $restart,
-    $installflag,
+  $ensure,
+  $installmanagementtools,
+  $installsubfeatures,
+  $restart,
+  $installflag,
+  $subfeatures = undef,
 ) {
 
   validate_re($ensure, '^(present|absent)$', 'valid values for ensure are \'present\' or \'absent\'')
@@ -43,7 +44,7 @@ class windows_ad::install (
 
   if ($installflag == true){
     if $::operatingsystem != 'windows' { fail ("${module_name} not supported on ${::operatingsystem}") }
-    if $restart { $restartbool = 'true' } else { $restartbool = 'false' }
+    if $restart { $restartbool = true } else { $restartbool = false }
     if $installsubfeatures { $subfeatures = '-IncludeAllSubFeature' }
 
     if $::kernelversion =~ /^(6.1)/ and $installmanagementtools {
@@ -60,15 +61,15 @@ class windows_ad::install (
       if $::kernelversion =~ /^(6.1)/ { $command = 'Add-WindowsFeature' } else { $command = 'Install-WindowsFeature' }
 
       exec { "add-feature-${title}":
-        command   => "Import-Module ServerManager; ${command} AD-Domain-Services ${managementtools} ${subfeatures} -Restart:$${restartbool}",
-        onlyif    => "Import-Module ServerManager; if (@(Get-WindowsFeature AD-Domain-Services | ?{\$_.Installed -match \'false\'}).count -eq 0) { exit 1 }",
-        provider  => powershell,
+        command  => "Import-Module ServerManager; ${command} AD-Domain-Services ${managementtools} ${subfeatures} -Restart:$${restartbool}",
+        onlyif   => "Import-Module ServerManager; if (@(Get-WindowsFeature AD-Domain-Services | ?{\$_.Installed -match \'false\'}).count -eq 0) { exit 1 }",
+        provider => powershell,
       }
     } elsif ($ensure == 'absent') {
       exec { "remove-feature-${title}":
-        command   => "Import-Module ServerManager; Remove-WindowsFeature AD-Domain-Services -Restart:$${restartbool}",
-        onlyif    => "Import-Module ServerManager; if (@(Get-WindowsFeature AD-Domain-Services | ?{\$_.Installed -match \'true\'}).count -eq 0) { exit 1 }",
-        provider  => powershell,
+        command  => "Import-Module ServerManager; Remove-WindowsFeature AD-Domain-Services -Restart:$${restartbool}",
+        onlyif   => "Import-Module ServerManager; if (@(Get-WindowsFeature AD-Domain-Services | ?{\$_.Installed -match \'true\'}).count -eq 0) { exit 1 }",
+        provider => powershell,
       }
     }
   }

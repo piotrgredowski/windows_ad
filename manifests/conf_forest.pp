@@ -63,8 +63,8 @@ class windows_ad::conf_forest (
 ){
   validate_bool($configureflag)
   if ($configureflag == true){
-    if $force { $forcebool = 'true' } else { $forcebool = 'false' }
-    if $forceremoval { $forceboolremoval = 'true' } else { $forceboolremoval = 'false' }
+    if $force { $forcebool = true } else { $forcebool = false }
+    if $forceremoval { $forceboolremoval = true } else { $forceboolremoval = false }
     if $demoteoperationmasterrole { $demoteoperationmasterrolebool = 'true' } else { $demoteoperationmasterrolebool = 'false' }
 
     # If the operating is server 2012 then run the appropriate powershell commands if not revert back to the cmd commands
@@ -101,15 +101,15 @@ class windows_ad::conf_forest (
       }else {
         # Deploy Server 2008 R2 Active Directory
         exec { 'Config ADDS 2008':
-          command => "cmd.exe /c dcpromo /unattend /InstallDNS:yes /confirmGC:${globalcatalog} /NewDomain:forest /NewDomainDNSName:${domainname} /domainLevel:${domainlevel} /forestLevel:${forestlevel} /ReplicaOrNewDomain:domain /databasePath:${databasepath} /logPath:${logpath} /sysvolPath:${sysvolpath} /SafeModeAdminPassword:${dsrmpassword}",
+          command => 'cmd.exe /c dcpromo /unattend /InstallDNS:yes /confirmGC:${globalcatalog} /NewDomain:forest /NewDomainDNSName:${domainname} /domainLevel:${domainlevel} /forestLevel:${forestlevel} /ReplicaOrNewDomain:domain /databasePath:${databasepath} /logPath:${logpath} /sysvolPath:${sysvolpath} /SafeModeAdminPassword:${dsrmpassword}',
           path    => 'C:\windows\sysnative',
           unless  => "sc \\\\${::fqdn} query ntds",
           timeout => $timeout,
         }
       }
-    }else{ #uninstall AD
+    } else { #uninstall AD
       if ($kernel_ver =~ /^6\.2|^6\.3/) {
-        if($localadminpassword != ''){
+        if ($localadminpassword != ''){
           exec { 'Uninstall ADDS':
             command     => "Import-Module ADDSDeployment;Uninstall-ADDSDomainController -LocalAdministratorPassword (ConvertTo-SecureString \'${localadminpassword}\' -asplaintext -force) -Force:$${forcebool} -ForceRemoval:$${forceboolremoval} -DemoteOperationMasterRole:$${demoteoperationmasterrolebool} -SkipPreChecks",
             provider    => powershell,
@@ -118,7 +118,7 @@ class windows_ad::conf_forest (
           }
           if($uninstalldnsrole == 'yes'){
             exec { 'Uninstall DNS Role':
-            command   => "Import-Module ServerManager; Remove-WindowsFeature DNS -Restart",
+            command   => "Import-Module ServerManager; Remove-WindowsFeature DNS -Restart',
             onlyif    => "Import-Module ServerManager; if (@(Get-WindowsFeature DNS | ?{\$_.Installed -match \'true\'}).count -eq 0) { exit 1 }",
             provider  => powershell,
             }
@@ -127,7 +127,7 @@ class windows_ad::conf_forest (
       }else{
         # uninstall Server 2008 R2 Active Directory -> not tested
         exec { 'Uninstall ADDS 2008':
-          command => "cmd.exe /c dcpromo /forceremoval",
+          command => 'cmd.exe /c dcpromo /forceremoval',
           path    => 'C:\windows\sysnative',
           unless  => "sc \\\\${::fqdn} query ntds",
           timeout => $timeout,

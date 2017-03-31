@@ -5,15 +5,10 @@ describe 'windows_ad' do
     let(:facts) do
       {
         kernelversion: '6.2',
-        operatingsystem: 'windows',
+        operatingsystem: 'windows'
       }
     end
 
-    let(:params) do
-      {
-        installsubfeatures: false
-      }
-    end
-    it { should contain_class('windows_ad') }
+    it { is_expected.to compile.with_all_deps }
   end
 end

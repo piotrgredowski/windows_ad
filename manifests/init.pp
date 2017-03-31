@@ -1,6 +1,3 @@
-#
-# Help can be found in readme.rd for a global help
-#
 # === Authors
 #
 # Jerome RIVIERE (www.jerome-riviere.re)
@@ -17,64 +14,44 @@ class windows_ad (
   $installmanagementtools    = $windows_ad::params::installmanagementtools,
   $installsubfeatures        = $windows_ad::params::installsubfeatures,
   $restart                   = $windows_ad::params::restart,
-  $installflag               = $windows_ad::params::installflag,        # Flag to bypass the install of AD if desired
-
-  ### Part Configure AD - Global
+  $installflag               = $windows_ad::params::installflag,
   $configure                 = $windows_ad::params::configure,
   $domain                    = $windows_ad::params::domain,
-  $domainname                = $windows_ad::params::domainname,          # FQDN
-  $netbiosdomainname         = $windows_ad::params::netbiosdomainname,   # FQDN
-  $configureflag             = $windows_ad::params::configureflag,       # Flag to bypass the configuration of AD if desired
-  #level AD
-  $domainlevel               = $windows_ad::params::domainlevel,         # Domain level {4 - Server 2008 R2 | 5 - Server 2012 | 6 - Server 2012 R2}
-  $forestlevel               = $windows_ad::params::forestlevel,      # Domain level {4 - Server 2008 R2 | 5 - Server 2012 | 6 - Server 2012 R2},
-
-  $installdns                = $windows_ad::params::installdns,                 # Add DNS Server Role
-  $globalcatalog             = $windows_ad::params::globalcatalog,                 # Add Global Catalog functionality
+  $domainname                = $windows_ad::params::domainname,
+  $netbiosdomainname         = $windows_ad::params::netbiosdomainname,
+  $configureflag             = $windows_ad::params::configureflag,
+  $domainlevel               = $windows_ad::params::domainlevel,
+  $forestlevel               = $windows_ad::params::forestlevel,
+  $installdns                = $windows_ad::params::installdns,
+  $globalcatalog             = $windows_ad::params::globalcatalog,
   $kernel_ver                = $windows_ad::params::kernel_ver,
-
-  # Installation Directories
-  $databasepath              = $windows_ad::params::databasepath,   # Active Directory database path
-  $logpath                   = $windows_ad::params::logpath,   # Active Directory log path
-  $sysvolpath                = $windows_ad::params::sysvolpath, # Active Directory sysvol path
-
+  $databasepath              = $windows_ad::params::databasepath,
+  $logpath                   = $windows_ad::params::logpath,
+  $sysvolpath                = $windows_ad::params::sysvolpath,
   $dsrmpassword              = $windows_ad::params::dsrmpassword,
-
-  ### Part Configure AD - Forest
-
-  #uninstall forest
   $localadminpassword        = $windows_ad::params::localadminpassword,
   $force                     = $windows_ad::params::force,
   $forceremoval              = $windows_ad::params::forceremoval,
   $uninstalldnsrole          = $windows_ad::params::uninstalldnsrole,
   $demoteoperationmasterrole = $windows_ad::params::demoteoperationmasterrole,
-
-  ### Part Configure AD - Other
   $secure_string_pwd         = $windows_ad::params::secure_string_pwd,
-  $installtype               = $windows_ad::params::installtype,          # New domain or replica of existing domain {replica | domain}
-  $domaintype                = $windows_ad::params::domaintype,          # Type of domain {Tree | Child | Forest} (New domain tree in an existing forest, child domain, or new forest)
-  $sitename                  = $windows_ad::params::sitename,          # Site Name
-
-  ### Define Hiera hashes
+  $installtype               = $windows_ad::params::installtype,
+  $domaintype                = $windows_ad::params::domaintype,
+  $sitename                  = $windows_ad::params::sitename,
   $groups                    = $windows_ad::params::groups,
   $groups_hiera_merge        = $windows_ad::params::groups_hiera_merge,
   $users                     = $windows_ad::params::users,
   $users_hiera_merge         = $windows_ad::params::users_hiera_merge,
   $usersingroup              = $windows_ad::params::usersingroup,
   $usersingroup_hiera_merge  = $windows_ad::params::usersingroup_hiera_merge,
-
   $timeout                   = $windows_ad::params::timeout
 ) inherits windows_ad::params {
-  # when present install process will be set. if already install nothing done
-  # when absent uninstall will be launch
   validate_re($install, '^(present|absent)$', 'valid values for install are \'present\' or \'absent\'')
-  # when present configure process will be done. if already configure nothing done
-  # absent don't do anything right now
   validate_re($configure, '^(present|absent)$', 'valid values for configure are \'present\' or \'absent\'')
   validate_bool($configureflag)
   validate_bool($installflag)
 
-  class{'windows_ad::install':
+  class { 'windows_ad::install':
     ensure                 => $install,
     installmanagementtools => $installmanagementtools,
     installsubfeatures     => $installsubfeatures,
@@ -82,7 +59,7 @@ class windows_ad (
     installflag            => $installflag,
   }
 
-  class{'windows_ad::conf_forest':
+  class { 'windows_ad::conf_forest':
     ensure                    => $configure,
     domainname                => $domainname,
     netbiosdomainname         => $netbiosdomainname,
@@ -103,17 +80,18 @@ class windows_ad (
     configureflag             => $configureflag,
     timeout                   => $timeout
   }
-  if($installflag or $configureflag){
-    if($install == 'present'){
+
+  if ($installflag or $configureflag){
+    if ($install == 'present'){
       anchor{'windows_ad::begin':} -> Class['windows_ad::install'] -> Class['windows_ad::conf_forest'] -> anchor{'windows_ad::end':} -> Windows_ad::Organisationalunit <| |> -> Windows_ad::Group <| |> -> Windows_ad::User <| |> -> Windows_ad::Groupmembers <| |>
-    }else{
-      if($configure == present){
+    } else {
+      if ($configure == present){
         fail('You can\'t desactivate the Role ADDS without uninstall ADDSControllerDomain first')
-      }else{
+      } else{
         anchor{'windows_ad::begin':} -> Class['windows_ad::conf_forest'] -> Class['windows_ad::install'] -> anchor{'windows_ad::end':}
       }
     }
-  }else{
+  } else {
     anchor{'windows_ad::begin':} -> Windows_ad::Organisationalunit <| |> -> Windows_ad::Group <| |> -> Windows_ad::User <| |> -> Windows_ad::Groupmembers <| |> -> anchor{'windows_ad::end':}
   }
 
